@@ -1,20 +1,66 @@
 package main
 
 import (
-	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 
-	"gituhb.com/babs-corp/babs-maps-auth/internal/config"
+	"github.com/babs-corp/babs-maps-auth/internal/app"
+	"github.com/babs-corp/babs-maps-auth/internal/config"
+)
+
+const (
+	envLocal = "local"
+	envDev   = "dev"
+	envProd  = "prod"
 )
 
 func main() {
-	// TODO: init config
 	cfg := config.MustLoad()
 
-	fmt.Println(cfg)
+	log := setupLogger(cfg.Env)
 
-	// TODO: init logger (slog)
+	log.Info("starting service")
+
+	application := app.New(log, cfg.Grpc.Port, cfg.StoragePath, cfg.TokenTTL)
+
+	go application.GRPCSrv.MustRun()
 
 	// TODO: init app
 
 	// TODO: run grpc server
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	sign := <-stop
+	log.Info("shutting down", slog.String("signal", sign.String()))
+	application.GRPCSrv.Stop()
+}
+
+func setupLogger(env string) *slog.Logger {
+	var log *slog.Logger
+
+	switch env {
+	case envLocal:
+		log = slog.New(
+			slog.NewTextHandler(os.Stdout,
+				&slog.HandlerOptions{Level: slog.LevelDebug},
+			),
+		)
+	case envDev:
+		log = slog.New(
+			slog.NewJSONHandler(os.Stdout,
+				&slog.HandlerOptions{Level: slog.LevelDebug},
+			),
+		)
+	case envProd:
+		log = slog.New(
+			slog.NewJSONHandler(os.Stdout,
+				&slog.HandlerOptions{Level: slog.LevelInfo},
+			),
+		)
+	}
+
+	return log
 }
