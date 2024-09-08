@@ -1,3 +1,5 @@
 .env
+.idea
 .code
 local.yaml
+/storage/

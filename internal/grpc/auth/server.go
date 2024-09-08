@@ -2,7 +2,9 @@ package auth
 
 import (
 	"context"
+	"errors"
 
+	"github.com/babs-corp/babs-maps-auth/internal/services/auth"
 	ssov1 "github.com/babs-corp/babs-maps-protos/gen/go/sso"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -44,7 +46,10 @@ func (s *serverAPI) Login(
 	}
 	token, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword(), int(req.GetAppId()))
 	if err != nil {
-		// TODO: add error handling
+		if errors.Is(err, auth.ErrInvalidCredentials) {
+			return nil, status.Error(codes.InvalidArgument, "invalid credentials")
+		}
+
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
@@ -58,7 +63,9 @@ func (s *serverAPI) Register(
 	req *ssov1.RegisterRequest,
 ) (*ssov1.RegisterResponse, error) {
 	if err := validateRegister(req); err != nil {
-		// TODO: err handling
+		if errors.Is(err, auth.ErrUserExists) {
+			return nil, status.Error(codes.AlreadyExists, "user already exists")
+		}
 		return nil, err
 	}
 	userID, err := s.auth.RegisterNewUser(ctx, req.GetEmail(), req.GetPassword())
@@ -74,7 +81,20 @@ func (s *serverAPI) IsAdmin(
 	ctx context.Context,
 	req *ssov1.IsAdminRequest,
 ) (*ssov1.IsAdminResponse, error) {
-	panic("implement me")
+	if err := validateIsAdmin(req); err != nil {
+		return nil, err
+	}
+	isAdmin, err := s.auth.IsAdmin(ctx, int(req.GetUserId()))
+	if err != nil {
+		if errors.Is(err, auth.ErrUserNotFound) {
+			return nil, status.Error(codes.NotFound, "user not found")
+		}
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+
+	return &ssov1.IsAdminResponse{
+		IsAdmin: isAdmin,
+	}, nil
 }
 
 func validateLogin(req *ssov1.LoginRequest) error {
