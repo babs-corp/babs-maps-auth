@@ -1,10 +1,13 @@
 package app
 
 import (
+	"fmt"
 	"log/slog"
 	"time"
 
 	grpcapp "github.com/babs-corp/babs-maps-auth/internal/app/grpc"
+	"github.com/babs-corp/babs-maps-auth/internal/services/auth"
+	"github.com/babs-corp/babs-maps-auth/internal/storage/sqlite"
 )
 
 type App struct {
@@ -17,11 +20,15 @@ func New(
 	storagePath string,
 	tokenTTL time.Duration,
 ) *App {
-	// TODO: init storage
+	storage, err := sqlite.New(storagePath)
+	if err != nil {
+		panic(fmt.Errorf("cannot init storage: %w", err))
+	}
 
-	// TODO: init auth service
+	// TODO: refactor?
+	authService := auth.New(log, storage, storage, storage, tokenTTL)
 
-	grpcApp := grpcapp.New(log, grpcPort)
+	grpcApp := grpcapp.New(log, authService, grpcPort)
 	return &App{
 		GRPCSrv: grpcApp,
 	}

@@ -154,16 +154,16 @@ func (a *Auth) RegisterNewUser(
 // IsAdmin checks if user is admin
 func (a *Auth) IsAdmin(
 	ctx context.Context,
-	userId int64,
+	userId int,
 ) (bool, error) {
 	const op = "auth.IsAdmin"
 
 	a.log.With(
 		slog.String("op", op),
-		slog.Int64("user_id", userId),
+		slog.Int("user_id", userId),
 	)
 
-	isAdmin, err := a.userProvider.IsAdmin(ctx, userId)
+	isAdmin, err := a.userProvider.IsAdmin(ctx, int64(userId))
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
 			a.log.Warn("user not found", sl.Err(err))
