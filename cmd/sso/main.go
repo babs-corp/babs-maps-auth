@@ -23,15 +23,22 @@ func main() {
 
 	log.Info("starting service")
 
-	application := app.New(log, cfg.Grpc.Port, cfg.StoragePath, cfg.TokenTTL)
+	application := app.New(
+		log,
+		cfg.Grpc.Port,
+		cfg.Rest.Port,
+		cfg.StoragePath,
+		cfg.TokenTTL,
+	)
 
-	go application.GRPCSrv.MustRun()
+	// go application.GRPCSrv.MustRun()
+	go application.RestSrv.MustRun()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	sign := <-stop
 	log.Info("shutting down", slog.String("signal", sign.String()))
-	application.GRPCSrv.Stop()
+	application.RestSrv.Stop()
 }
 
 func setupLogger(env string) *slog.Logger {
@@ -45,7 +52,7 @@ func setupLogger(env string) *slog.Logger {
 			),
 		)
 	case envDev:
-		log = slog.New(
+		log = slog.New(/
 			slog.NewJSONHandler(os.Stdout,
 				&slog.HandlerOptions{Level: slog.LevelDebug},
 			),

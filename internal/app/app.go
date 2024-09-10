@@ -6,17 +6,20 @@ import (
 	"time"
 
 	grpcapp "github.com/babs-corp/babs-maps-auth/internal/app/grpc"
+	restapp "github.com/babs-corp/babs-maps-auth/internal/app/rest"
 	"github.com/babs-corp/babs-maps-auth/internal/services/auth"
 	"github.com/babs-corp/babs-maps-auth/internal/storage/sqlite"
 )
 
 type App struct {
 	GRPCSrv *grpcapp.App
+	RestSrv *restapp.App
 }
 
 func New(
 	log *slog.Logger,
 	grpcPort int,
+	restPort int,
 	storagePath string,
 	tokenTTL time.Duration,
 ) *App {
@@ -29,7 +32,9 @@ func New(
 	authService := auth.New(log, storage, storage, storage, tokenTTL)
 
 	grpcApp := grpcapp.New(log, authService, grpcPort)
+	restApp := restapp.New(log, authService, grpcPort)
 	return &App{
 		GRPCSrv: grpcApp,
+		RestSrv: restApp,
 	}
 }

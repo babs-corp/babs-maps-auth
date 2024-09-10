@@ -21,6 +21,7 @@ type Auth interface {
 		password string,
 		appId int,
 	) (token string, err error)
+
 	RegisterNewUser(ctx context.Context,
 		email string,
 		password string,
