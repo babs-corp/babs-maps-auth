@@ -2,4 +2,5 @@
 .idea
 .code
 local.yaml
+dev.yaml
 /storage/
