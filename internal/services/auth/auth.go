@@ -11,6 +11,7 @@ import (
 	"github.com/babs-corp/babs-maps-auth/internal/lib/jwt"
 	"github.com/babs-corp/babs-maps-auth/internal/lib/logger/handlers/sl"
 	"github.com/babs-corp/babs-maps-auth/internal/storage"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -27,13 +28,14 @@ type UserSaver interface {
 		ctx context.Context,
 		email string,
 		passHash []byte,
-	) (uid int64, er error)
+	) (uid uuid.UUID, err error)
 }
 
 // We can get user not only from Database, but e.g. from kafka, cache, etc...
 type UserProvider interface {
 	User(ctx context.Context, email string) (models.User, error)
-	IsAdmin(ctx context.Context, userID int64) (bool, error)
+	UserById(ctx context.Context, id uuid.UUID) (models.User, error)
+	IsAdmin(ctx context.Context, userID uuid.UUID) (bool, error)
 }
 
 type AppProvider interface {
@@ -119,7 +121,7 @@ func (a *Auth) RegisterNewUser(
 	ctx context.Context,
 	email string,
 	password string,
-) (int64, error) {
+) (uuid.UUID, error) {
 	const op = "auth.RegisterNewUser"
 
 	log := a.log.With(
@@ -134,18 +136,18 @@ func (a *Auth) RegisterNewUser(
 	if err != nil {
 		log.Error("failed to hash password", sl.Err(err))
 
-		return 0, fmt.Errorf("%s: %w", op, err)
+		return uuid.UUID{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	id, err := a.userSaver.SaveUser(ctx, email, passHash)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserExists) {
 			log.Warn("user already exists", sl.Err(err))
-			return 0, fmt.Errorf("%s: %w", op, ErrUserExists)
+			return uuid.UUID{}, fmt.Errorf("%w", ErrUserExists)
 		}
 		log.Error("failed to save user", sl.Err(err))
 
-		return 0, fmt.Errorf("%s: %w", op, err)
+		return uuid.UUID{}, fmt.Errorf("cannot register user")
 	}
 
 	return id, nil
@@ -154,16 +156,16 @@ func (a *Auth) RegisterNewUser(
 // IsAdmin checks if user is admin
 func (a *Auth) IsAdmin(
 	ctx context.Context,
-	userId int,
+	userId uuid.UUID,
 ) (bool, error) {
 	const op = "auth.IsAdmin"
 
 	a.log.With(
 		slog.String("op", op),
-		slog.Int("user_id", userId),
+		slog.String("user_id", userId.String()),
 	)
 
-	isAdmin, err := a.userProvider.IsAdmin(ctx, int64(userId))
+	isAdmin, err := a.userProvider.IsAdmin(ctx, userId)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
 			a.log.Warn("user not found", sl.Err(err))
@@ -175,4 +177,29 @@ func (a *Auth) IsAdmin(
 	}
 
 	return isAdmin, nil
+}
+
+func (a *Auth) UserById(
+	ctx context.Context,
+	userId uuid.UUID,
+) (models.User, error) {
+	const op = "auth.User"
+
+	a.log.With(
+		slog.String("op", op),
+		slog.String("user_id", userId.String()),
+	)
+
+	user, err := a.userProvider.UserById(ctx, userId)
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			a.log.Warn("user not found", sl.Err(err))
+			return models.User{}, fmt.Errorf("%s: %w", op, ErrUserNotFound)
+		}
+
+		a.log.Error("failed to check if user is admin", sl.Err(err))
+		return models.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return user, nil
 }

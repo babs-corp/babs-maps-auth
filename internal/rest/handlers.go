@@ -3,7 +3,9 @@ package rest
 import (
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/google/uuid"
 )
 
 type RegisterRequestBody struct {
@@ -56,5 +58,26 @@ func handleLogin(w http.ResponseWriter, r *http.Request, a Auth) {
 }
 
 func handleIsAdmin(w http.ResponseWriter, _ *http.Request, _ Auth) {
+	w.WriteHeader(http.StatusOK)
+}
+
+func handleGetUser(w http.ResponseWriter, r *http.Request, a Auth) {
+	rawUserID := chi.URLParam(r, "userId")
+
+	userID, err := uuid.Parse(rawUserID)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.PlainText(w, r, err.Error())
+		return
+	}
+
+	user, err := a.UserById(r.Context(), userID)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.PlainText(w, r, err.Error())
+		return
+	}
+
+	render.JSON(w, r, user)
 	w.WriteHeader(http.StatusOK)
 }

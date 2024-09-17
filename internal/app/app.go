@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"time"
@@ -8,7 +9,7 @@ import (
 	grpcapp "github.com/babs-corp/babs-maps-auth/internal/app/grpc"
 	restapp "github.com/babs-corp/babs-maps-auth/internal/app/rest"
 	"github.com/babs-corp/babs-maps-auth/internal/services/auth"
-	"github.com/babs-corp/babs-maps-auth/internal/storage/sqlite"
+	postgres "github.com/babs-corp/babs-maps-auth/internal/storage/pgx"
 )
 
 type App struct {
@@ -23,7 +24,7 @@ func New(
 	storagePath string,
 	tokenTTL time.Duration,
 ) *App {
-	storage, err := sqlite.New(storagePath)
+	storage, err := postgres.New(context.TODO(), storagePath)
 	if err != nil {
 		panic(fmt.Errorf("cannot init storage: %w", err))
 	}
@@ -31,10 +32,8 @@ func New(
 	// TODO: refactor?
 	authService := auth.New(log, storage, storage, storage, tokenTTL)
 
-	grpcApp := grpcapp.New(log, authService, grpcPort)
-	restApp := restapp.New(log, authService, grpcPort)
+	restApp := restapp.New(log, authService, restPort)
 	return &App{
-		GRPCSrv: grpcApp,
 		RestSrv: restApp,
 	}
 }

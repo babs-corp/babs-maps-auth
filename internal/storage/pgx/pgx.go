@@ -9,6 +9,8 @@ import (
 	"github.com/babs-corp/babs-maps-auth/internal/domain/models"
 	"github.com/babs-corp/babs-maps-auth/internal/services/auth"
 	"github.com/babs-corp/babs-maps-auth/internal/storage"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 )
@@ -32,24 +34,26 @@ func New(ctx context.Context, storagePath string) (*Storage, error) {
 	return &Storage{db: db}, nil
 }
 
-func (s *Storage) SaveUser(ctx context.Context, email string, passwordHash []byte) (userId int64, err error) {
+func (s *Storage) SaveUser(ctx context.Context, email string, passwordHash []byte) (userId uuid.UUID, err error) {
 	const op = "storage.pgx.SaveUser"
 
-	stmt, err := s.db.PreparexContext(ctx, "INSERT INTO users (email, pass_hash) VALUES (?, ?)")
+	query := fmt.Sprintf("INSERT INTO users (email, pass_hash) VALUES ('%s', '%s') RETURNING id;", email, string(passwordHash))
+	stmt, err := s.db.PreparexContext(ctx, query)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", op, err)
+		return uuid.UUID{}, fmt.Errorf("%s: %w", op, err)
 	}
 	defer stmt.Close()
 
-	res, err := stmt.ExecContext(ctx, email, passwordHash)
+	res := stmt.QueryRowxContext(ctx)
+	var id uuid.UUID
+	err = res.Scan(&id)
 	if err != nil {
+		var e *pgconn.PgError
+		if errors.As(err, &e) && e.Code == UniqueViolation {
+			return uuid.UUID{}, fmt.Errorf("%s: %w", op, storage.ErrUserExists)
+		}
 
-		return 0, fmt.Errorf("%s: %w", op, err)
-	}
-
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("%s: %w", op, err)
+		return uuid.UUID{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return id, nil
@@ -58,12 +62,13 @@ func (s *Storage) SaveUser(ctx context.Context, email string, passwordHash []byt
 func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
 	const op = "storage.pgx.User"
 
-	stmt, err := s.db.PreparexContext(ctx, "SELECT id, email, pass_hash FROM users WHERE email = ?")
+	query := fmt.Sprintf("SELECT id, email, pass_hash FROM users WHERE email = '%s'", email)
+	stmt, err := s.db.PreparexContext(ctx, query)
 	if err != nil {
 		return models.User{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	row := stmt.QueryRowContext(ctx, email)
+	row := stmt.QueryRowContext(ctx)
 
 	var user models.User
 	err = row.Scan(&user.ID, &user.Email, &user.PassHash)
@@ -78,7 +83,30 @@ func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
 	return user, nil
 }
 
-func (s *Storage) IsAdmin(ctx context.Context, userID int64) (bool, error) {
+func (s *Storage) UserById(ctx context.Context, uid uuid.UUID) (models.User, error) {
+	const op = "storage.pgx.UserById"
+
+	stmt, err := s.db.PreparexContext(ctx, "SELECT id, email, pass_hash FROM users WHERE id = ?")
+	if err != nil {
+		return models.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	row := stmt.QueryRowContext(ctx, uid)
+
+	var user models.User
+	err = row.Scan(&user.ID, &user.Email, &user.PassHash)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.User{}, fmt.Errorf("%s: %w", op, storage.ErrUserNotFound)
+		}
+
+		return models.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return user, nil
+}
+
+func (s *Storage) IsAdmin(ctx context.Context, userID uuid.UUID) (bool, error) {
 	const op = "storage.pfx.IsAdmin"
 
 	stmt, err := s.db.PreparexContext(ctx, "SELECT is_admin FROM users WHERE id = ?")

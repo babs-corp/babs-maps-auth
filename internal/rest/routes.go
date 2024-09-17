@@ -4,8 +4,10 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/babs-corp/babs-maps-auth/internal/domain/models"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/google/uuid"
 )
 
 type Auth interface {
@@ -17,14 +19,16 @@ type Auth interface {
 	RegisterNewUser(ctx context.Context,
 		email string,
 		password string,
-	) (userId int64, err error)
-	IsAdmin(ctx context.Context, userId int) (bool, error)
+	) (userId uuid.UUID, err error)
+	IsAdmin(ctx context.Context, userId uuid.UUID) (bool, error)
+	UserById(ctx context.Context, userId uuid.UUID) (models.User, error)
 }
 
 const (
 	PostRegisterURL = "/register"
 	PostLoginURL    = "/login"
 	GetIsAdminURL   = "/isAdmin"
+	GetUserURL      = "/user/{userId}"
 )
 
 func InitRoutes(r chi.Router, auth Auth) {
@@ -33,7 +37,12 @@ func InitRoutes(r chi.Router, auth Auth) {
 	r.Post(PostRegisterURL, func(w http.ResponseWriter, r *http.Request) {
 		handleRegister(w, r, auth)
 	})
+
 	r.Post(PostLoginURL, func(w http.ResponseWriter, r *http.Request) {
 		handleLogin(w, r, auth)
+	})
+
+	r.Get(GetUserURL, func(w http.ResponseWriter, r *http.Request) {
+		handleGetUser(w, r, auth)
 	})
 }

@@ -46,10 +46,10 @@ func (a *App) MustRun() {
 func (a *App) Run() error {
 	const op = "restApp.Run"
 	log := a.log.With(slog.String("op", op), slog.Int("port", a.port))
+	log.Info("rest server is running", slog.String("addr", a.server.Addr))
 
 	a.server.ListenAndServe()
-	log.Info("rest server is running")
-
+	
 	return nil
 }
 
