@@ -22,6 +22,7 @@ type Auth interface {
 	) (userId uuid.UUID, err error)
 	IsAdmin(ctx context.Context, userId uuid.UUID) (bool, error)
 	UserById(ctx context.Context, userId uuid.UUID) (models.User, error)
+	Users(ctx context.Context, limit uint) ([]models.User, error)
 }
 
 const (
@@ -29,6 +30,7 @@ const (
 	PostLoginURL    = "/login"
 	GetIsAdminURL   = "/isAdmin"
 	GetUserURL      = "/user/{userId}"
+	GetUsersURL     = "/users"
 )
 
 func InitRoutes(r chi.Router, auth Auth) {
@@ -44,5 +46,10 @@ func InitRoutes(r chi.Router, auth Auth) {
 
 	r.Get(GetUserURL, func(w http.ResponseWriter, r *http.Request) {
 		handleGetUser(w, r, auth)
+	})
+
+	// TODO: remove or make for admins only
+	r.Get(GetUsersURL, func(w http.ResponseWriter, r *http.Request) {
+		handleGetUsers(w, r, auth)
 	})
 }

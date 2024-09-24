@@ -86,15 +86,16 @@ func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
 func (s *Storage) UserById(ctx context.Context, uid uuid.UUID) (models.User, error) {
 	const op = "storage.pgx.UserById"
 
-	stmt, err := s.db.PreparexContext(ctx, "SELECT id, email, pass_hash FROM users WHERE id = ?")
+	query := fmt.Sprintf("SELECT id, email, pass_hash, created_at FROM users WHERE id = '%s'", uid)
+	stmt, err := s.db.PreparexContext(ctx, query)
 	if err != nil {
 		return models.User{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	row := stmt.QueryRowContext(ctx, uid)
+	row := stmt.QueryRowxContext(ctx)
 
 	var user models.User
-	err = row.Scan(&user.ID, &user.Email, &user.PassHash)
+	err = row.StructScan(&user)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return models.User{}, fmt.Errorf("%s: %w", op, storage.ErrUserNotFound)
@@ -104,6 +105,35 @@ func (s *Storage) UserById(ctx context.Context, uid uuid.UUID) (models.User, err
 	}
 
 	return user, nil
+}
+
+func (s *Storage) Users(ctx context.Context, limit uint) ([]models.User, error) {
+	const op = "storage.pgx.Users"
+
+	query := fmt.Sprintf("SELECT * FROM users LIMIT '%d'", limit)
+	stmt, err := s.db.PreparexContext(ctx, query)
+	if err != nil {
+		return []models.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	rows, err := stmt.QueryxContext(ctx)
+	if err != nil {
+		return []models.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	var users []models.User
+
+	for rows.Next() {
+		var user models.User
+		err = rows.StructScan(&user)
+		if err != nil {
+			return []models.User{}, fmt.Errorf("%s: %w", op, err)
+		}
+
+		users = append(users, user)
+	}
+
+	return users, nil
 }
 
 func (s *Storage) IsAdmin(ctx context.Context, userID uuid.UUID) (bool, error) {

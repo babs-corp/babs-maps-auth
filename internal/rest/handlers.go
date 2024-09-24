@@ -2,6 +2,7 @@ package rest
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -79,5 +80,28 @@ func handleGetUser(w http.ResponseWriter, r *http.Request, a Auth) {
 	}
 
 	render.JSON(w, r, user)
+	w.WriteHeader(http.StatusOK)
+}
+
+func handleGetUsers(w http.ResponseWriter, r *http.Request, a Auth) {
+	sLimit := chi.URLParam(r, "limit")
+	if sLimit == "" {
+		sLimit = "10"
+	}
+	limit, err := strconv.ParseUint(sLimit, 10, 32)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.PlainText(w, r, err.Error())
+		return
+	}
+
+	users, err := a.Users(r.Context(), uint(limit))
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.PlainText(w, r, err.Error())
+		return
+	}
+
+	render.JSON(w, r, users)
 	w.WriteHeader(http.StatusOK)
 }

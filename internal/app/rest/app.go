@@ -49,7 +49,7 @@ func (a *App) Run() error {
 	log.Info("rest server is running", slog.String("addr", a.server.Addr))
 
 	a.server.ListenAndServe()
-	
+
 	return nil
 }
 
@@ -60,7 +60,8 @@ func (a *App) Stop() {
 		slog.Int("port", a.port),
 	)
 
-	shutdownCtx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	err := a.server.Shutdown(shutdownCtx)
 	if err != nil {
 		a.log.Error("failed to shutdown rest server", sl.Err(err))

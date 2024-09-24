@@ -34,6 +34,7 @@ type UserSaver interface {
 // We can get user not only from Database, but e.g. from kafka, cache, etc...
 type UserProvider interface {
 	User(ctx context.Context, email string) (models.User, error)
+	Users(ctx context.Context, limit uint) ([]models.User, error)
 	UserById(ctx context.Context, id uuid.UUID) (models.User, error)
 	IsAdmin(ctx context.Context, userID uuid.UUID) (bool, error)
 }
@@ -183,7 +184,7 @@ func (a *Auth) UserById(
 	ctx context.Context,
 	userId uuid.UUID,
 ) (models.User, error) {
-	const op = "auth.User"
+	const op = "auth.UserById"
 
 	a.log.With(
 		slog.String("op", op),
@@ -202,4 +203,28 @@ func (a *Auth) UserById(
 	}
 
 	return user, nil
+}
+
+func (a *Auth) Users(
+	ctx context.Context,
+	limit uint,
+) ([]models.User, error) {
+	const op = "auth.Users"
+
+	a.log.With(
+		slog.String("op", op),
+	)
+
+	users, err := a.userProvider.Users(ctx, limit)
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			a.log.Warn("user not found", sl.Err(err))
+			return []models.User{}, fmt.Errorf("%s: %w", op, ErrUserNotFound)
+		}
+
+		a.log.Error("failed to check if user is admin", sl.Err(err))
+		return []models.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return users, nil
 }
