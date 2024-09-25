@@ -21,6 +21,7 @@ type Auth struct {
 	userProvider UserProvider
 	appProvider  AppProvider
 	tokenTTL     time.Duration
+	secret       string
 }
 
 type UserSaver interface {
@@ -54,15 +55,15 @@ func New(
 	log *slog.Logger,
 	userSaver UserSaver,
 	userProvider UserProvider,
-	appProvider AppProvider,
 	tokenTTL time.Duration,
+	secret string,
 ) *Auth {
 	return &Auth{
 		log:          log,
 		userSaver:    userSaver,
 		userProvider: userProvider,
-		appProvider:  appProvider,
 		tokenTTL:     tokenTTL,
+		secret:       secret,
 	}
 }
 
@@ -70,7 +71,6 @@ func (a *Auth) Login(
 	ctx context.Context,
 	email string,
 	password string,
-	appId int,
 ) (string, error) {
 	const op = "auth.Login"
 
@@ -97,17 +97,17 @@ func (a *Auth) Login(
 		return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
-	app, err := a.appProvider.App(ctx, appId)
-	if err != nil {
-		if errors.Is(err, storage.ErrAppNotFound) {
-			a.log.Warn("app not found", sl.Err(err))
-			return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
-		}
-		a.log.Error("failed to get app", sl.Err(err))
-	}
-	a.log.Info("app found", slog.String("app", app.Name))
+	// app, err := a.appProvider.App(ctx, appId)
+	// if err != nil {
+	// 	if errors.Is(err, storage.ErrAppNotFound) {
+	// 		a.log.Warn("app not found", sl.Err(err))
+	// 		return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
+	// 	}
+	// 	a.log.Error("failed to get app", sl.Err(err))
+	// }
+	// a.log.Info("app found", slog.String("app", app.Name))
 
-	token, err := jwt.NewToken(user, app, a.tokenTTL)
+	token, err := jwt.NewToken(user, a.secret, a.tokenTTL)
 	if err != nil {
 		a.log.Error("failed to create token", sl.Err(err))
 		return "", fmt.Errorf("%s: %w", op, err)

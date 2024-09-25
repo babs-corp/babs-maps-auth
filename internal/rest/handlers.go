@@ -17,7 +17,6 @@ type RegisterRequestBody struct {
 type LoginRequestBody struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
-	AppId    int    `json:"app_id"`
 }
 
 func handleRegister(w http.ResponseWriter, r *http.Request, a Auth) {
@@ -47,7 +46,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request, a Auth) {
 		return
 	}
 
-	token, err := a.Login(r.Context(), reqBody.Email, reqBody.Password, reqBody.AppId)
+	token, err := a.Login(r.Context(), reqBody.Email, reqBody.Password)
 	if err != nil {
 		render.Status(r, http.StatusBadRequest)
 		render.PlainText(w, r, err.Error())

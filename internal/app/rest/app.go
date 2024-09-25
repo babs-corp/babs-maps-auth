@@ -24,6 +24,7 @@ func New(
 	port int,
 ) *App {
 	router := chi.NewRouter()
+
 	rest.InitRoutes(router, auth)
 	server := &http.Server{
 		Addr:    restPort(port),

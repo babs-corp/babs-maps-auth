@@ -20,9 +20,6 @@ func validateLogin(req *LoginRequestBody) error {
 	if req.Password == "" {
 		return fmt.Errorf("password is required")
 	}
-	if req.AppId == 0 {
-		return fmt.Errorf("app_id is required")
-	}
 
 	return nil
 }

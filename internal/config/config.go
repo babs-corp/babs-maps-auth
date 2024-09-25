@@ -14,6 +14,7 @@ type Config struct {
 	TokenTTL    time.Duration `yaml:"token_ttl" env-required:"true"`
 	Grpc        GrpcConfig    `yaml:"grpc"`
 	Rest        RestConfig    `yaml:"rest"`
+	Secret      string        `yaml:"secret" env-required:"true"`
 }
 
 type GrpcConfig struct {
@@ -31,7 +32,7 @@ func MustLoad() *Config {
 	if path == "" {
 		panic("config path must be set")
 	}
-	
+
 	return MustLoadByPath(path)
 }
 

@@ -23,6 +23,7 @@ func New(
 	restPort int,
 	storagePath string,
 	tokenTTL time.Duration,
+	secret string,
 ) *App {
 	storage, err := postgres.New(context.TODO(), storagePath)
 	if err != nil {
@@ -30,7 +31,7 @@ func New(
 	}
 
 	// TODO: refactor?
-	authService := auth.New(log, storage, storage, storage, tokenTTL)
+	authService := auth.New(log, storage, storage, tokenTTL, secret)
 
 	restApp := restapp.New(log, authService, restPort)
 	return &App{

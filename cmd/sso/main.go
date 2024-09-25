@@ -29,6 +29,7 @@ func main() {
 		cfg.Rest.Port,
 		cfg.StoragePath,
 		cfg.TokenTTL,
+		cfg.Secret,
 	)
 
 	// go application.GRPCSrv.MustRun()

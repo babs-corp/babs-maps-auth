@@ -7,16 +7,15 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func NewToken(users models.User, app models.App, duration time.Duration) (string, error) {
+func NewToken(users models.User, secret string, duration time.Duration) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
 
 	claims := token.Claims.(jwt.MapClaims)
 	claims["uid"] = users.ID
 	claims["email"] = users.Email
-	claims["app_id"] = app.ID
 	claims["exp"] = time.Now().Add(duration).Unix()
 
-	tokenString, err := token.SignedString([]byte(app.Secret))
+	tokenString, err := token.SignedString([]byte(secret))
 	if err != nil {
 		return "", err
 	}
