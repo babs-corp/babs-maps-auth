@@ -1,6 +1,7 @@
 env: "example" #local, dev, prod
 storage_path: "./storage/sqlite/sso.db"
 token_ttl: 1h
+secret: my-app-secert
 grpc: 
   port: 44044
   timeout: 10h
