@@ -1,6 +1,9 @@
 package rest
 
-import "github.com/google/uuid"
+import (
+	"github.com/babs-corp/babs-maps-auth/internal/domain/models"
+	"github.com/google/uuid"
+)
 
 type LoginInput struct {
 	Body struct {
@@ -25,5 +28,27 @@ type RegisterInput struct {
 type RegisterResponse struct {
 	Body struct {
 		Id uuid.UUID `json:"id"`
+	}
+}
+
+type GetUserInput struct {
+	Uid string `doc:"user uid" path:"userId"`
+}
+
+type GetUserResponse struct {
+	Body struct {
+		// TODO: hide password and private data
+		User models.User `json:"user" doc:"full user info"`
+	}
+}
+
+type GetUsersInput struct {
+	Limit uint `doc:"limit" query:"limit"`
+}
+
+type GetUsersResponse struct {
+	Body struct {
+		// TODO: hide password and private data
+		Users []models.User `json:"users" doc:"full users info"`
 	}
 }

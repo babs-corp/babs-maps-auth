@@ -75,16 +75,49 @@ func InitRoutes(router *chi.Mux, auth Auth) {
 		return &resp, nil
 	})
 
-	// r.Post(PostLoginURL, func(w http.ResponseWriter, r *http.Request) {
-	// 	handleLogin(w, r, auth)
-	// })
+	huma.Register(api, huma.Operation{
+		OperationID:   "get-user",
+		Method:        http.MethodGet,
+		Path:          GetUserURL,
+		Summary:       "Get user by uuid",
+		Tags:          []string{"users"},
+		DefaultStatus: http.StatusOK,
+	}, func(ctx context.Context, input *GetUserInput) (*GetUserResponse, error) {
+		rawUserID := input.Uid
 
-	// r.Get(GetUserURL, func(w http.ResponseWriter, r *http.Request) {
-	// 	handleGetUser(w, r, auth)
-	// })
+		userID, err := uuid.Parse(rawUserID)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse user id: %w", err)
+		}
 
-	// // TODO: remove or make for admins only
-	// r.Get(GetUsersURL, func(w http.ResponseWriter, r *http.Request) {
-	// 	handleGetUsers(w, r, auth)
-	// })
+		user, err := auth.UserById(ctx, userID)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get user: %w", err)
+		}
+
+		resp := GetUserResponse{}
+		resp.Body.User = user
+		return &resp, nil
+	})
+
+	huma.Register(api, huma.Operation{
+		OperationID:   "get-users",
+		Method:        http.MethodGet,
+		Path:          GetUsersURL,
+		Summary:       "Get users",
+		Tags:          []string{"users"},
+		DefaultStatus: http.StatusOK,
+	}, func(ctx context.Context, input *GetUsersInput) (*GetUsersResponse, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 10
+		}
+		users, err := auth.Users(ctx, limit)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get users: %w", err)
+		}
+		resp := GetUsersResponse{}
+		resp.Body.Users = users
+		return &resp, nil
+	})
 }

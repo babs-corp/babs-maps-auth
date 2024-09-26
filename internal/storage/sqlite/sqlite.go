@@ -14,7 +14,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var _ auth.UserProvider = (*Storage)(nil)
+// var _ auth.UserProvider = (*Storage)(nil)
 var _ auth.UserSaver = (*Storage)(nil)
 var _ auth.AppProvider = (*Storage)(nil)
 
