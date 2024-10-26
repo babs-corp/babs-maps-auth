@@ -25,6 +25,7 @@ type Auth interface {
 	IsAdmin(ctx context.Context, userId uuid.UUID) (bool, error)
 	UserById(ctx context.Context, userId uuid.UUID) (models.User, error)
 	Users(ctx context.Context, limit uint) ([]models.User, error)
+	ValidateToken(ctx context.Context, token string) (uuid.UUID, error)
 }
 
 const (
@@ -33,6 +34,7 @@ const (
 	GetIsAdminURL   = "/isAdmin"
 	GetUserURL      = "/user/{userId}"
 	GetUsersURL     = "/users"
+	GetValidatedUsersURL     = "/user"
 )
 
 func InitRoutes(router *chi.Mux, auth Auth) {
@@ -118,6 +120,28 @@ func InitRoutes(router *chi.Mux, auth Auth) {
 		}
 		resp := GetUsersResponse{}
 		resp.Body.Users = users
+		return &resp, nil
+	})
+
+	huma.Register(api, huma.Operation{
+		OperationID:   "get-validated-user",
+		Method:        http.MethodGet,
+		Path:          GetValidatedUsersURL,
+		Summary:       "Get validated user by token",
+		Tags:          []string{"users"},
+		DefaultStatus: http.StatusOK,
+	}, func(ctx context.Context, input *GetUserByTokenInput) (*GetUserByTokenResponse, error) {
+		token := input.Body.Token
+		uid, err := auth.ValidateToken(ctx, token)
+		if err != nil {
+			return nil, fmt.Errorf("invalid token: %w", err)
+		}
+		user, err := auth.UserById(ctx, uid)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get user: %w", err)
+		}
+		resp := GetUserByTokenResponse{}
+		resp.Body.User = user
 		return &resp, nil
 	})
 }

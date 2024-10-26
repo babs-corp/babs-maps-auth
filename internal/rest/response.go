@@ -52,3 +52,16 @@ type GetUsersResponse struct {
 		Users []models.User `json:"users" doc:"full users info"`
 	}
 }
+
+type GetUserByTokenInput struct {
+	Body struct {
+		Token    string `json:"token"`
+	}
+}
+
+type GetUserByTokenResponse struct {
+	Body struct {
+		// TODO: hide password and private data
+		User models.User `json:"user" doc:"full user info"`
+	}
+}

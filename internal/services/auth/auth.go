@@ -8,9 +8,10 @@ import (
 	"time"
 
 	"github.com/babs-corp/babs-maps-auth/internal/domain/models"
-	"github.com/babs-corp/babs-maps-auth/internal/lib/jwt"
+	jwt_lib "github.com/babs-corp/babs-maps-auth/internal/lib/jwt"
 	"github.com/babs-corp/babs-maps-auth/internal/lib/logger/handlers/sl"
 	"github.com/babs-corp/babs-maps-auth/internal/storage"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -107,7 +108,7 @@ func (a *Auth) Login(
 	// }
 	// a.log.Info("app found", slog.String("app", app.Name))
 
-	token, err := jwt.NewToken(user, a.secret, a.tokenTTL)
+	token, err := jwt_lib.NewToken(user, a.secret, a.tokenTTL)
 	if err != nil {
 		a.log.Error("failed to create token", sl.Err(err))
 		return "", fmt.Errorf("%s: %w", op, err)
@@ -227,4 +228,38 @@ func (a *Auth) Users(
 	}
 
 	return users, nil
+}
+
+func (a *Auth) ValidateToken(
+	ctx context.Context,
+	token string,
+) (uuid.UUID, error) {
+	const op = "auth.validateToken"
+
+	a.log.With(
+		slog.String("op", op),
+	)
+
+	tokenParsed, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
+		return []byte(a.secret), nil
+	})
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("[%s] cannot validate token: %w", op, err)
+	}
+
+	claims, ok := tokenParsed.Claims.(jwt.MapClaims)
+	if !ok {
+		return uuid.UUID{}, fmt.Errorf("[%s] cannot parse token claims", op)
+	}
+
+	str_uid, ok := claims["uid"].(string)
+	if !ok {
+		return uuid.UUID{}, fmt.Errorf("[%s] cannot parse string uuid", op)
+	}
+	uid, err := uuid.Parse(str_uid)
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("[%s] cannot parse uuid claims", op)
+	}
+	
+	return uid, nil
 }
